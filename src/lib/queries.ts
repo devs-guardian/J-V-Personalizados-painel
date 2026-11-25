@@ -34,6 +34,23 @@ export const useReposicoes = () =>
 export const useProfiles = (enabled = true) =>
   useQuery({ queryKey: ['profiles'], enabled, queryFn: () => run<Profile[]>(supabase.from('profiles').select('*').order('criado_em')) })
 
+/**
+ * O script supabase/005 já foi rodado? Sem ele o app segue sem o controle por cor.
+ * `undefined` enquanto não se sabe: falha de rede não pode ser confundida com "não rodado".
+ */
+export const useTemCores = (): boolean | undefined =>
+  useQuery({
+    queryKey: ['tem-cores'],
+    staleTime: 60_000,
+    retry: true,
+    queryFn: async () => {
+      const { error } = await supabase.from('pedido_itens').select('cores').limit(1)
+      if (!error) return true
+      if (error.code === '42703' || error.code === 'PGRST204') return false // a coluna não existe
+      throw new Error(error.message)
+    },
+  }).data
+
 /** Mutação simples com mensagem de erro amigável. */
 export async function exec(q: PromiseLike<{ error: { message: string } | null }>): Promise<void> {
   const { error } = await q
